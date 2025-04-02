@@ -138,6 +138,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
             container.innerHTML = ''; // Clear container
             const network = new vis.Network(container, data, options);
+            // Add a unique ID to the container for later reference
+            const uniqueId = `vis-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+            container.id = uniqueId;
+            console.log(`Created visualization with container ID: ${uniqueId}`); // Log container ID
             return network;
         } catch (error) {
             console.error("Error creating Vis network:", error);
@@ -155,15 +159,27 @@ document.addEventListener('DOMContentLoaded', () => {
         visContainer.appendChild(explanation);
 
         const degreeDisplay = document.createElement('div');
-        degreeDisplay.style.cssText = 'margin-top: 5px; text-align: center; font-weight: bold; min-height: 1.2em;';
+        const displayId = `degree-display-${visContainer.id}`;
+        degreeDisplay.id = displayId;
+        degreeDisplay.style.cssText = 'margin-top: 5px; text-align: center; font-weight: bold; min-height: 1.2em; color: #e74c3c !important;'; // Added explicit color for debugging
         degreeDisplay.innerHTML = '&nbsp;';
         visContainer.appendChild(degreeDisplay);
 
+        console.log(`[Degree Interaction] Setup for container ${visContainer.id}, display ID ${displayId}`);
+
         network.on("click", function (params) {
-            degreeDisplay.innerHTML = '&nbsp;';
+            console.log(`[Degree Interaction] Click event fired on ${visContainer.id}. Params:`, params);
+            const targetDisplay = document.getElementById(displayId);
+            if (!targetDisplay) {
+                console.error(`[Degree Interaction] Could not find display element with ID ${displayId}`);
+                return;
+            }
+            targetDisplay.innerHTML = '&nbsp;';
+
             if (params.nodes.length > 0) {
                 const nodeId = params.nodes[0];
-                network.storePositions(); // Prevent node sticking
+                console.log(`[Degree Interaction] Node clicked: ${nodeId}`);
+                network.storePositions();
 
                 const connectedEdges = network.getConnectedEdges(nodeId);
                 let degree = 0, inDegree = 0, outDegree = 0;
@@ -171,21 +187,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const edgeId of connectedEdges) {
                     const edge = networkData.edges.get(edgeId);
                     if (!edge) continue;
-                    if (edge.from === edge.to && edge.from === nodeId) { // Loop
-                        degree += 2;
-                        if (isDirected) { inDegree++; outDegree++; }
-                    } else if (edge.from === nodeId) { // Outgoing
-                        if (!isDirected) degree++;
-                        outDegree++;
-                    } else if (edge.to === nodeId) { // Incoming
-                        if (!isDirected) degree++;
-                        inDegree++;
-                    }
+                    if (edge.from === edge.to && edge.from === nodeId) { degree += 2; if (isDirected) { inDegree++; outDegree++; } }
+                    else if (edge.from === nodeId) { if (!isDirected) degree++; outDegree++; }
+                    else if (edge.to === nodeId) { if (!isDirected) degree++; inDegree++; }
                 }
                 const nodeLabel = networkData.nodes.get(nodeId)?.label || nodeId;
-                degreeDisplay.innerHTML = isDirected
+                const resultText = isDirected
                     ? `Nod ${nodeLabel}: Ingrad = ${inDegree}, Utgrad = ${outDegree}`
                     : `Nod ${nodeLabel}: Grad = ${degree}`;
+
+                console.log(`[Degree Interaction] Calculated: ${resultText}`);
+                targetDisplay.innerHTML = resultText; // Update the specific display element
+                targetDisplay.style.color = 'var(--text-color)'; // Restore original color after update (or set explicitly)
+            } else {
+                 console.log("[Degree Interaction] Click was not on a node.");
             }
         });
     }
@@ -201,11 +216,21 @@ document.addEventListener('DOMContentLoaded', () => {
         visContainer.appendChild(explanation);
 
         const statusDisplay = document.createElement('div');
-        statusDisplay.style.cssText = 'margin-top: 5px; text-align: center; min-height: 4em;';
+        const displayId = `walk-status-${visContainer.id}`;
+        statusDisplay.id = displayId;
+        statusDisplay.style.cssText = 'margin-top: 5px; text-align: center; min-height: 4em; color: #2980b9 !important;'; // Added explicit color for debugging
         visContainer.appendChild(statusDisplay);
 
+        console.log(`[Walk Interaction] Setup for container ${visContainer.id}, display ID ${displayId}`);
+
         function updateWalkStatus() {
-            statusDisplay.innerHTML = '';
+            const targetDisplay = document.getElementById(displayId);
+            if (!targetDisplay) {
+                console.error(`[Walk Interaction] Could not find display element with ID ${displayId} in updateWalkStatus`);
+                return;
+            }
+
+            targetDisplay.innerHTML = '';
             if (currentWalkNodes.length === 0) return;
 
             let statusText = `<b>Vandring:</b> ${currentWalkNodes.map(id => networkData.nodes.get(id)?.label || id).join(' → ')}<br>`;
@@ -213,685 +238,293 @@ document.addEventListener('DOMContentLoaded', () => {
             const visitedEdges = new Set();
             const visitedNodes = new Set();
 
-            for (const edgeId of currentWalkEdges) {
-                if (visitedEdges.has(edgeId)) { isPath = false; break; }
-                visitedEdges.add(edgeId);
-            }
-
-            for (let i = 0; i < currentWalkNodes.length; i++) {
-                const nodeId = currentWalkNodes[i];
-                if (visitedNodes.has(nodeId)) {
-                    // Allow start/end node repetition for potential cycle/circuit check later
-                    if (i !== currentWalkNodes.length - 1 || nodeId !== currentWalkNodes[0]) {
-                        isSimplePath = false;
-                    }
-                }
-                visitedNodes.add(nodeId);
-            }
-
+            for (const edgeId of currentWalkEdges) { if (visitedEdges.has(edgeId)) { isPath = false; break; } visitedEdges.add(edgeId); }
+            for (let i = 0; i < currentWalkNodes.length; i++) { const nodeId = currentWalkNodes[i]; if (visitedNodes.has(nodeId)) { if (i !== currentWalkNodes.length - 1 || nodeId !== currentWalkNodes[0]) { isSimplePath = false; } } visitedNodes.add(nodeId); }
             const isClosed = currentWalkNodes.length > 1 && currentWalkNodes[0] === currentWalkNodes[currentWalkNodes.length - 1];
-
             if (isClosed) {
                 if (isPath) isCircuit = true;
-                // Check for cycle: closed, simple path (no intermediate node repeats)
-                const intermediateNodes = currentWalkNodes.slice(1, -1);
-                const intermediateSet = new Set(intermediateNodes);
-                if (isPath && intermediateNodes.length === intermediateSet.size && !intermediateSet.has(currentWalkNodes[0])) {
-                    isCycle = true;
-                    isSimplePath = false; // Cycle repeats start/end, so not strictly simple path
-                } else {
-                    isCycle = false; // If intermediate nodes repeat, not a cycle
-                }
-                 if (!isCycle) isSimplePath = false; // If closed but not a cycle, it's not a simple path either
-            } else {
-                 // If not closed, check if it's still a simple path (no node repeats at all)
-                 const pathNodesSet = new Set(currentWalkNodes);
-                 if(currentWalkNodes.length !== pathNodesSet.size) {
-                    isSimplePath = false;
-                 }
-            }
+                const intermediateNodes = currentWalkNodes.slice(1, -1); const intermediateSet = new Set(intermediateNodes);
+                if (isPath && intermediateNodes.length === intermediateSet.size && !intermediateSet.has(currentWalkNodes[0])) { isCycle = true; isSimplePath = false; } else { isCycle = false; }
+                 if (!isCycle) isSimplePath = false;
+            } else { const pathNodesSet = new Set(currentWalkNodes); if(currentWalkNodes.length !== pathNodesSet.size) { isSimplePath = false; } }
 
-            // Determine final status text
             if (isCycle) statusText += '<span style="color: var(--secondary-color);">✓ Cykel</span><br>';
             else if (isCircuit) statusText += '<span style="color: var(--secondary-color);">✓ Krets</span><br>';
-
             if (isSimplePath && !isCycle) statusText += '<span style="color: var(--secondary-color);">✓ Stig (Simple Path)</span><br>';
             else if (isPath && !isCircuit) statusText += '<span style="color: var(--secondary-color);">✓ Väg (Path)</span><br>';
             else if (!isPath) statusText += '<span style="color: red;">✗ Inte en Väg (kant repeterad)</span><br>';
-
             if (!isSimplePath && !isCycle) statusText += '<span style="color: red;">✗ Inte en Stig (nod repeterad)</span><br>';
 
-            statusDisplay.innerHTML = statusText;
+            console.log(`[Walk Interaction] Updating status on ${displayId}: ${statusText.replace(/<br>/g, ' ')}`);
+            targetDisplay.innerHTML = statusText;
+            targetDisplay.style.color = 'var(--text-color)'; // Restore original color after update
         }
 
 
         network.on("click", function (params) {
+            console.log(`[Walk Interaction] Click event fired on ${visContainer.id}. Params:`, params);
+            const targetDisplay = document.getElementById(displayId);
+            if (!targetDisplay) { console.error(`[Walk Interaction] Could not find display element with ID ${displayId}`); return; }
+
             if (params.nodes.length > 0) {
                 const clickedNodeId = params.nodes[0];
-                network.storePositions(); // Prevent sticky node
+                console.log(`[Walk Interaction] Node clicked: ${clickedNodeId}`);
+                network.storePositions();
 
-                if (lastNodeId === null) { // Start new walk
-                    currentWalkNodes = [clickedNodeId];
-                    currentWalkEdges = [];
-                    lastNodeId = clickedNodeId;
-                } else { // Continue walk
-                    const connectingEdgeIds = network.getConnectedEdges(lastNodeId);
-                    let edgeFoundId = null;
-                    for (const edgeId of connectingEdgeIds) {
-                        const edge = networkData.edges.get(edgeId);
-                        if (!edge) continue;
-                        if ((edge.from === lastNodeId && edge.to === clickedNodeId) || (edge.to === lastNodeId && edge.from === clickedNodeId)) {
-                            edgeFoundId = edgeId;
-                            break;
-                        }
-                    }
-                    if (edgeFoundId) {
-                        currentWalkNodes.push(clickedNodeId);
-                        currentWalkEdges.push(edgeFoundId);
-                        lastNodeId = clickedNodeId;
-                    } else {
-                        statusDisplay.innerHTML = `<span style="color: orange;">Kan inte gå direkt från ${networkData.nodes.get(lastNodeId)?.label || lastNodeId} till ${networkData.nodes.get(clickedNodeId)?.label || clickedNodeId}.</span>`;
-                        return; // Don't update status if move is invalid
-                    }
-                }
-                network.unselectAll();
-                network.selectNodes(currentWalkNodes);
-                network.selectEdges(currentWalkEdges);
-                updateWalkStatus();
-            }
-        });
-
-        visContainer.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            currentWalkNodes = []; currentWalkEdges = []; lastNodeId = null;
-            network.unselectAll();
-            statusDisplay.innerHTML = 'Vandring nollställd.';
-        });
-    }
-
-    function setupEulerInteraction(visContainer, network, networkData, totalEdges) {
-        let visitedEdges = new Set();
-        let currentPathNodes = [];
-        let lastNode = null;
-
-        const explanation = document.createElement('p');
-        explanation.style.cssText = 'font-size: 0.9em; margin-top: 10px; text-align: center;';
-        explanation.innerHTML = 'Klicka på kanter i följd för att försöka hitta en Eulerväg/Eulerkrets. Högerklicka för att nollställa.';
-        visContainer.appendChild(explanation);
-
-        const statusDisplay = document.createElement('div');
-        statusDisplay.style.cssText = 'margin-top: 5px; text-align: center; min-height: 3em;';
-        visContainer.appendChild(statusDisplay);
-
-        function updateEulerStatus() {
-            const visitedCount = visitedEdges.size;
-            let message = `Besökta kanter: ${visitedCount} / ${totalEdges}. `;
-            if (visitedCount === totalEdges && currentPathNodes.length > 0) {
-                message += '<br><span style="color: var(--secondary-color);">Alla kanter besökta!</span> ';
-                if (currentPathNodes[0] === currentPathNodes[currentPathNodes.length - 1]) {
-                    message += '<span style="color: var(--secondary-color);">✓ Eulerkrets hittad!</span>';
+                if (lastNodeId === null) {
+                    currentWalkNodes = [clickedNodeId]; currentWalkEdges = []; lastNodeId = clickedNodeId;
+                    console.log(`[Walk Interaction] Started walk at node ${clickedNodeId}`);
                 } else {
-                    message += '<span style="color: var(--secondary-color);">✓ Eulerväg hittad!</span>';
-                }
-            }
-            statusDisplay.innerHTML = message;
-        }
-
-        network.on("click", function (params) {
-            if (params.edges.length > 0) {
-                const clickedEdgeId = params.edges[0];
-                const edge = networkData.edges.get(clickedEdgeId);
-                if (!edge || visitedEdges.has(clickedEdgeId)) {
-                    statusDisplay.innerHTML = `<span style="color: red;">${edge ? 'Kant redan besökt!' : 'Ogiltig kant!'}</span>`;
-                    return;
-                }
-
-                let nextNode = null;
-                if (lastNode === null) { // Starting path
-                    lastNode = edge.from;
-                    nextNode = edge.to;
-                    currentPathNodes = [lastNode, nextNode];
-                } else { // Continuing path
-                    if (edge.from === lastNode) nextNode = edge.to;
-                    else if (edge.to === lastNode) nextNode = edge.from;
-                    else {
-                        statusDisplay.innerHTML = `<span style="color: orange;">Kanten ansluter inte till föregående nod (${networkData.nodes.get(lastNode)?.label || lastNode}).</span>`;
+                    const connectingEdgeIds = network.getConnectedEdges(lastNodeId); let edgeFoundId = null;
+                    for (const edgeId of connectingEdgeIds) { const edge = networkData.edges.get(edgeId); if (!edge) continue; if ((edge.from === lastNodeId && edge.to === clickedNodeId) || (edge.to === lastNodeId && edge.from === clickedNodeId)) { edgeFoundId = edgeId; break; } }
+                    if (edgeFoundId) {
+                        currentWalkNodes.push(clickedNodeId); currentWalkEdges.push(edgeFoundId); lastNodeId = clickedNodeId;
+                        console.log(`[Walk Interaction] Added node ${clickedNodeId}, edge ${edgeFoundId}. Current walk nodes: ${currentWalkNodes.join(',')}`);
+                    } else {
+                        console.log(`[Walk Interaction] No direct edge found from ${lastNodeId} to ${clickedNodeId}.`);
+                        targetDisplay.innerHTML = `<span style="color: orange;">Kan inte gå direkt från ${networkData.nodes.get(lastNodeId)?.label || lastNodeId} till ${networkData.nodes.get(clickedNodeId)?.label || clickedNodeId}.</span>`;
                         return;
                     }
-                    currentPathNodes.push(nextNode);
-                    lastNode = nextNode;
                 }
-
-                visitedEdges.add(clickedEdgeId);
-                networkData.edges.update({ id: clickedEdgeId, color: { color: '#2ecc71', highlight: '#27ae60' }, width: 3 });
-                updateEulerStatus();
-
-            } else if (params.nodes.length > 0 && lastNode === null) { // Allow starting by clicking a node
-                 lastNode = params.nodes[0];
-                 currentPathNodes = [lastNode];
-                 statusDisplay.innerHTML = `Startar vid nod ${networkData.nodes.get(lastNode)?.label || lastNode}. Välj en anslutande kant.`;
-            }
+                network.unselectAll(); network.selectNodes(currentWalkNodes); network.selectEdges(currentWalkEdges);
+                updateWalkStatus();
+            } else { console.log("[Walk Interaction] Click was not on a node."); }
         });
 
         visContainer.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            visitedEdges.clear(); currentPathNodes = []; lastNode = null;
-            networkData.edges.update(networkData.edges.getIds().map(id => ({ id: id, color: { color: '#3498db', highlight: '#2ecc71' }, width: 2 }))); // Reset styles
-            statusDisplay.innerHTML = 'Försök nollställt.';
+            e.preventDefault(); console.log(`[Walk Interaction] Context menu (reset) on ${visContainer.id}`);
+            currentWalkNodes = []; currentWalkEdges = []; lastNodeId = null; network.unselectAll();
+            const targetDisplay = document.getElementById(displayId);
+            if (targetDisplay) targetDisplay.innerHTML = 'Vandring nollställd.';
         });
     }
 
+    // --- Euler Interaction (No changes needed based on feedback, keeping concise) ---
+    function setupEulerInteraction(visContainer, network, networkData, totalEdges) {
+        let visitedEdges = new Set(); let currentPathNodes = []; let lastNode = null;
+        const explanation = document.createElement('p'); explanation.style.cssText = 'font-size: 0.9em; margin-top: 10px; text-align: center;'; explanation.innerHTML = 'Klicka på kanter i följd för att försöka hitta en Eulerväg/Eulerkrets. Högerklicka för att nollställa.'; visContainer.appendChild(explanation);
+        const statusDisplay = document.createElement('div'); const displayId = `euler-status-${visContainer.id}`; statusDisplay.id = displayId; statusDisplay.style.cssText = 'margin-top: 5px; text-align: center; min-height: 3em;'; visContainer.appendChild(statusDisplay);
+        function updateEulerStatus() { const targetDisplay = document.getElementById(displayId); if (!targetDisplay) return; const visitedCount = visitedEdges.size; let message = `Besökta kanter: ${visitedCount} / ${totalEdges}. `; if (visitedCount === totalEdges && currentPathNodes.length > 0) { message += '<br><span style="color: var(--secondary-color);">Alla kanter besökta!</span> '; if (currentPathNodes[0] === currentPathNodes[currentPathNodes.length - 1]) { message += '<span style="color: var(--secondary-color);">✓ Eulerkrets hittad!</span>'; } else { message += '<span style="color: var(--secondary-color);">✓ Eulerväg hittad!</span>'; } } targetDisplay.innerHTML = message; }
+        network.on("click", function (params) { const targetDisplay = document.getElementById(displayId); if (!targetDisplay) return; if (params.edges.length > 0) { const clickedEdgeId = params.edges[0]; const edge = networkData.edges.get(clickedEdgeId); if (!edge || visitedEdges.has(clickedEdgeId)) { targetDisplay.innerHTML = `<span style="color: red;">${edge ? 'Kant redan besökt!' : 'Ogiltig kant!'}</span>`; return; } let nextNode = null; if (lastNode === null) { lastNode = edge.from; nextNode = edge.to; currentPathNodes = [lastNode, nextNode]; } else { if (edge.from === lastNode) nextNode = edge.to; else if (edge.to === lastNode) nextNode = edge.from; else { targetDisplay.innerHTML = `<span style="color: orange;">Kanten ansluter inte till föregående nod (${networkData.nodes.get(lastNode)?.label || lastNode}).</span>`; return; } currentPathNodes.push(nextNode); lastNode = nextNode; } visitedEdges.add(clickedEdgeId); networkData.edges.update({ id: clickedEdgeId, color: { color: '#2ecc71', highlight: '#27ae60' }, width: 3 }); updateEulerStatus(); } else if (params.nodes.length > 0 && lastNode === null) { lastNode = params.nodes[0]; currentPathNodes = [lastNode]; targetDisplay.innerHTML = `Startar vid nod ${networkData.nodes.get(lastNode)?.label || lastNode}. Välj en anslutande kant.`; } });
+        visContainer.addEventListener('contextmenu', (e) => { e.preventDefault(); visitedEdges.clear(); currentPathNodes = []; lastNode = null; networkData.edges.update(networkData.edges.getIds().map(id => ({ id: id, color: { color: '#3498db', highlight: '#2ecc71' }, width: 2 }))); const targetDisplay = document.getElementById(displayId); if (targetDisplay) targetDisplay.innerHTML = 'Försök nollställt.'; });
+    }
+
+    // --- Hamilton Interaction (No changes needed based on feedback, keeping concise) ---
     function setupHamiltonInteraction(visContainer, network, networkData, totalNodes) {
-        let currentHamiltonPathNodes = [];
-        let currentHamiltonPathEdges = [];
-        let visitedNodesSet = new Set();
-
-        const explanation = document.createElement('p');
-        explanation.style.cssText = 'font-size: 0.9em; margin-top: 10px; text-align: center;';
-        explanation.innerHTML = 'Klicka på noder i följd för att försöka hitta en Hamiltonstig/-cykel. Högerklicka för att nollställa.';
-        visContainer.appendChild(explanation);
-
-        const statusDisplay = document.createElement('div');
-        statusDisplay.style.cssText = 'margin-top: 5px; text-align: center; min-height: 3em;';
-        visContainer.appendChild(statusDisplay);
-
-        function updateHamiltonStatus() {
-            statusDisplay.innerHTML = '';
-            if (currentHamiltonPathNodes.length === 0) return;
-
-            const pathString = currentHamiltonPathNodes.map(id => networkData.nodes.get(id)?.label || id).join(' → ');
-            let message = `<b>Aktuell stig:</b> ${pathString}<br>`;
-            let isHamiltonPath = false;
-            let isHamiltonCycle = false;
-
-            if (visitedNodesSet.size === totalNodes) {
-                 if (currentHamiltonPathNodes.length === totalNodes + 1 && currentHamiltonPathNodes[0] === currentHamiltonPathNodes[totalNodes]) {
-                     // Last edge check is implicitly done by the click handler allowing this state
-                     isHamiltonCycle = true;
-                     message += '<span style="color: var(--secondary-color);">✓ Hamiltoncykel hittad!</span>';
-                 } else if (currentHamiltonPathNodes.length === totalNodes) {
-                     isHamiltonPath = true;
-                     message += '<span style="color: var(--secondary-color);">✓ Hamiltonstig hittad!</span>';
-                 }
-            }
-            statusDisplay.innerHTML = message;
-        }
-
-        network.on("click", function (params) {
-            if (params.nodes.length > 0) {
-                const clickedNodeId = params.nodes[0];
-                network.storePositions(); // Prevent sticky node
-
-                const lastNodeId = currentHamiltonPathNodes.length > 0 ? currentHamiltonPathNodes[currentHamiltonPathNodes.length - 1] : null;
-
-                if (lastNodeId === null) { // Start of path
-                    currentHamiltonPathNodes = [clickedNodeId];
-                    visitedNodesSet.add(clickedNodeId);
-                } else { // Continue path
-                    // Check if node already visited (allow start node only for cycle completion)
-                    if (visitedNodesSet.has(clickedNodeId)) {
-                        if (!(clickedNodeId === currentHamiltonPathNodes[0] && visitedNodesSet.size === totalNodes && currentHamiltonPathNodes.length === totalNodes)) {
-                            statusDisplay.innerHTML = `<span style="color: red;">Nod ${networkData.nodes.get(clickedNodeId)?.label || clickedNodeId} redan besökt!</span>`;
-                            return;
-                        }
-                        // Allow clicking start node to complete cycle
-                    }
-
-                    // Check for edge
-                    const connectingEdges = networkData.edges.get({
-                        filter: item => (item.from === lastNodeId && item.to === clickedNodeId) || (item.to === lastNodeId && item.from === clickedNodeId)
-                    });
-                    if (connectingEdges.length === 0) {
-                        statusDisplay.innerHTML = `<span style="color: orange;">Ingen kant mellan ${networkData.nodes.get(lastNodeId)?.label || lastNodeId} och ${networkData.nodes.get(clickedNodeId)?.label || clickedNodeId}.</span>`;
-                        return;
-                    }
-
-                    // Add node and edge
-                    currentHamiltonPathNodes.push(clickedNodeId);
-                    visitedNodesSet.add(clickedNodeId); // Add even if it's the start node again
-                    currentHamiltonPathEdges.push(connectingEdges[0].id);
-                }
-
-                network.unselectAll();
-                network.selectNodes(currentHamiltonPathNodes);
-                network.selectEdges(currentHamiltonPathEdges);
-                updateHamiltonStatus();
-            }
-        });
-
-        visContainer.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            currentHamiltonPathNodes = []; currentHamiltonPathEdges = []; visitedNodesSet.clear();
-            network.unselectAll();
-            statusDisplay.innerHTML = 'Försök nollställt.';
-        });
+        let currentHamiltonPathNodes = []; let currentHamiltonPathEdges = []; let visitedNodesSet = new Set();
+        const explanation = document.createElement('p'); explanation.style.cssText = 'font-size: 0.9em; margin-top: 10px; text-align: center;'; explanation.innerHTML = 'Klicka på noder i följd för att försöka hitta en Hamiltonstig/-cykel. Högerklicka för att nollställa.'; visContainer.appendChild(explanation);
+        const statusDisplay = document.createElement('div'); const displayId = `hamilton-status-${visContainer.id}`; statusDisplay.id = displayId; statusDisplay.style.cssText = 'margin-top: 5px; text-align: center; min-height: 3em;'; visContainer.appendChild(statusDisplay);
+        function updateHamiltonStatus() { const targetDisplay = document.getElementById(displayId); if (!targetDisplay) return; targetDisplay.innerHTML = ''; if (currentHamiltonPathNodes.length === 0) return; const pathString = currentHamiltonPathNodes.map(id => networkData.nodes.get(id)?.label || id).join(' → '); let message = `<b>Aktuell stig:</b> ${pathString}<br>`; if (visitedNodesSet.size === totalNodes) { if (currentHamiltonPathNodes.length === totalNodes + 1 && currentHamiltonPathNodes[0] === currentHamiltonPathNodes[totalNodes]) { message += '<span style="color: var(--secondary-color);">✓ Hamiltoncykel hittad!</span>'; } else if (currentHamiltonPathNodes.length === totalNodes) { message += '<span style="color: var(--secondary-color);">✓ Hamiltonstig hittad!</span>'; } } targetDisplay.innerHTML = message; }
+        network.on("click", function (params) { const targetDisplay = document.getElementById(displayId); if (!targetDisplay) return; if (params.nodes.length > 0) { const clickedNodeId = params.nodes[0]; network.storePositions(); const lastNodeId = currentHamiltonPathNodes.length > 0 ? currentHamiltonPathNodes[currentHamiltonPathNodes.length - 1] : null; if (lastNodeId === null) { currentHamiltonPathNodes = [clickedNodeId]; visitedNodesSet.add(clickedNodeId); } else { if (visitedNodesSet.has(clickedNodeId)) { if (!(clickedNodeId === currentHamiltonPathNodes[0] && visitedNodesSet.size === totalNodes && currentHamiltonPathNodes.length === totalNodes)) { targetDisplay.innerHTML = `<span style="color: red;">Nod ${networkData.nodes.get(clickedNodeId)?.label || clickedNodeId} redan besökt!</span>`; return; } } const connectingEdges = networkData.edges.get({ filter: item => (item.from === lastNodeId && item.to === clickedNodeId) || (item.to === lastNodeId && item.from === clickedNodeId) }); if (connectingEdges.length === 0) { targetDisplay.innerHTML = `<span style="color: orange;">Ingen kant mellan ${networkData.nodes.get(lastNodeId)?.label || lastNodeId} och ${networkData.nodes.get(clickedNodeId)?.label || clickedNodeId}.</span>`; return; } currentHamiltonPathNodes.push(clickedNodeId); visitedNodesSet.add(clickedNodeId); currentHamiltonPathEdges.push(connectingEdges[0].id); } network.unselectAll(); network.selectNodes(currentHamiltonPathNodes); network.selectEdges(currentHamiltonPathEdges); updateHamiltonStatus(); } });
+        visContainer.addEventListener('contextmenu', (e) => { e.preventDefault(); currentHamiltonPathNodes = []; currentHamiltonPathEdges = []; visitedNodesSet.clear(); network.unselectAll(); const targetDisplay = document.getElementById(displayId); if (targetDisplay) targetDisplay.innerHTML = 'Försök nollställt.'; });
     }
 
-    // --- Permutation/Combination Interaction Setup ---
+    // --- Permutation/Combination Interaction Setup (No changes needed based on feedback) ---
     function setupPermCombInteraction(visContainer, term) {
-        const isPermutation = term.name.startsWith("Permutation");
-        const termId = isPermutation ? 'perm' : 'comb';
-
-        visContainer.style.display = 'block';
-        visContainer.style.height = 'auto';
-        visContainer.classList.remove('graph-visualization');
-        visContainer.classList.add('perm-comb-container');
+        const isPermutation = term.name.startsWith("Permutation"); const termId = isPermutation ? 'perm' : 'comb';
+        visContainer.style.display = 'block'; visContainer.style.height = 'auto'; visContainer.classList.remove('graph-visualization'); visContainer.classList.add('perm-comb-container');
         visContainer.innerHTML = `
-           <div class="pc-controls">
-               <label for="elements-${termId}">Element (kommaseparerade):</label>
-               <input type="text" id="elements-${termId}" value="A,B,C">
-               <label for="k-input-${termId}">k (antal att välja):</label>
-               <input type="number" id="k-input-${termId}" value="2" min="0" step="1">
-               <button id="calc-btn-${termId}">Visualisera ${isPermutation ? 'Permutationer' : 'Kombinationer'}</button>
-           </div>
-           <div class="pc-explanation">
-               <p><strong>Formel:</strong> ${isPermutation ? 'P(n, k) = n! / (n-k)!' : 'C(n, k) = n! / (k! * (n-k)!)'}</p>
-               <p>${isPermutation ? 'Permutationer handlar om <strong>ordnade</strong> arrangemang.' : 'Kombinationer handlar om <strong>oordnade</strong> urval (grupper).'}</p>
-           </div>
-           <div id="result-output-${termId}" class="pc-output"></div>
-           <div id="visualizer-${termId}" class="pc-visualizer"></div>`;
-
-        const elementsInput = visContainer.querySelector(`#elements-${termId}`);
-        const kInput = visContainer.querySelector(`#k-input-${termId}`);
-        const calcBtn = visContainer.querySelector(`#calc-btn-${termId}`);
-        const resultOutput = visContainer.querySelector(`#result-output-${termId}`);
-        const visualizer = visContainer.querySelector(`#visualizer-${termId}`);
-
-        // Helper functions scoped within setupPermCombInteraction
-        function factorial(num) {
-           if (num < 0) return NaN; if (num === 0) return 1;
-           let result = 1; for (let i = 2; i <= num; i++) result *= i; return result;
-        }
-        function permutations(n, k) {
-           if (k < 0 || k > n) return 0; if (k === 0) return 1;
-           const factN = factorial(n); const factNK = factorial(n - k);
-           if (isNaN(factN) || isNaN(factNK) || factNK === 0) return Infinity; return factN / factNK;
-        }
-        function combinations(n, k) {
-           if (k < 0 || k > n) return 0; if (k === 0 || k === n) return 1; if (k > n / 2) k = n - k;
-           let res = 1; for(let i = 0; i < k; i++) { res = res * (n - i) / (i + 1); } return res;
-        }
-        function generateCombinations(elements, k) {
-           if (k < 0 || k > elements.length) return []; if (k === 0) return [[]]; if (elements.length === 0) return [];
-           const first = elements[0], rest = elements.slice(1);
-           const combsWithoutFirst = generateCombinations(rest, k);
-           const combsWithFirst = generateCombinations(rest, k - 1).map(comb => [first, ...comb]);
-           return [...combsWithFirst, ...combsWithoutFirst];
-        }
-        function generatePermutations(elements, k) {
-           if (k < 0 || k > elements.length) return []; if (k === 0) return [[]]; if (elements.length === 0) return [];
-           let perms = [];
-           for (let i = 0; i < elements.length; i++) {
-               const current = elements[i];
-               const remaining = [...elements.slice(0, i), ...elements.slice(i + 1)];
-               generatePermutations(remaining, k - 1).forEach(subPerm => perms.push([current, ...subPerm]));
-           } return perms;
-        }
-
+           <div class="pc-controls"> <label for="elements-${termId}">Element (kommaseparerade):</label> <input type="text" id="elements-${termId}" value="A,B,C"> <label for="k-input-${termId}">k (antal att välja):</label> <input type="number" id="k-input-${termId}" value="2" min="0" step="1"> <button id="calc-btn-${termId}">Visualisera ${isPermutation ? 'Permutationer' : 'Kombinationer'}</button> </div>
+           <div class="pc-explanation"> <p><strong>Formel:</strong> ${isPermutation ? 'P(n, k) = n! / (n-k)!' : 'C(n, k) = n! / (k! * (n-k)!)'}</p> <p>${isPermutation ? 'Permutationer handlar om <strong>ordnade</strong> arrangemang.' : 'Kombinationer handlar om <strong>oordnade</strong> urval (grupper).'}</p> </div>
+           <div id="result-output-${termId}" class="pc-output"></div> <div id="visualizer-${termId}" class="pc-visualizer"></div>`;
+        const elementsInput = visContainer.querySelector(`#elements-${termId}`); const kInput = visContainer.querySelector(`#k-input-${termId}`); const calcBtn = visContainer.querySelector(`#calc-btn-${termId}`); const resultOutput = visContainer.querySelector(`#result-output-${termId}`); const visualizer = visContainer.querySelector(`#visualizer-${termId}`);
+        function factorial(num) { if (num < 0) return NaN; if (num === 0) return 1; let r = 1; for (let i = 2; i <= num; i++) r *= i; return r; }
+        function permutations(n, k) { if (k < 0 || k > n) return 0; if (k === 0) return 1; const fN = factorial(n), fNK = factorial(n - k); if (isNaN(fN) || isNaN(fNK) || fNK === 0) return Infinity; return fN / fNK; }
+        function combinations(n, k) { if (k < 0 || k > n) return 0; if (k === 0 || k === n) return 1; if (k > n / 2) k = n - k; let r = 1; for(let i = 0; i < k; i++) { r = r * (n - i) / (i + 1); } return r; }
+        function generateCombinations(els, k) { if (k < 0 || k > els.length) return []; if (k === 0) return [[]]; if (els.length === 0) return []; const f = els[0], r = els.slice(1); const woF = generateCombinations(r, k); const wF = generateCombinations(r, k - 1).map(c => [f, ...c]); return [...wF, ...woF]; }
+        function generatePermutations(els, k) { if (k < 0 || k > els.length) return []; if (k === 0) return [[]]; if (els.length === 0) return []; let p = []; for (let i = 0; i < els.length; i++) { const c = els[i]; const r = [...els.slice(0, i), ...els.slice(i + 1)]; generatePermutations(r, k - 1).forEach(sP => p.push([c, ...sP])); } return p; }
         function updateVisualization() {
-            const elementsStr = elementsInput.value.trim();
-            const elements = elementsStr ? elementsStr.split(',').map(el => el.trim()).filter(el => el) : [];
-            const k = parseInt(kInput.value, 10);
-            const n = elements.length;
-
-            resultOutput.innerHTML = ''; visualizer.innerHTML = ''; // Clear previous
-
-            if (n === 0) { resultOutput.innerHTML = '<span style="color: orange;">Ange minst ett element.</span>'; return; }
-            if (isNaN(k) || k < 0) { resultOutput.innerHTML = '<span style="color: red;">Ange ett giltigt positivt heltal för k.</span>'; return; }
-            if (k > n) { resultOutput.innerHTML = '<span style="color: red;">k kan inte vara större än n.</span>'; return; }
-
-            let resultValue, results = [], headerText, itemClass, formatItem;
-            const MAX_DISPLAY_ITEMS = 50; // Increased limit slightly
-
-            if (isPermutation) {
-                resultValue = permutations(n, k);
-                headerText = 'Exempel på Permutationer (ordnade sekvenser):';
-                itemClass = 'perm-item';
-                formatItem = (p) => {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = itemClass;
-                    p.forEach(el => { const span = document.createElement('span'); span.textContent = el; itemDiv.appendChild(span); });
-                    return itemDiv;
-                };
-                if (resultValue > 0 && resultValue <= MAX_DISPLAY_ITEMS) results = generatePermutations(elements, k);
-                resultOutput.innerHTML = `Antal permutationer P(${n}, ${k}) = <strong>${resultValue}</strong>`;
-            } else { // Combination
-                resultValue = combinations(n, k);
-                headerText = 'Exempel på Kombinationer (oordnade grupper):';
-                itemClass = 'comb-group';
-                formatItem = (c) => {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = itemClass;
-                    itemDiv.textContent = `{ ${c.sort().join(', ')} }`; // Sort for consistent display
-                    return itemDiv;
-                };
-                 if (resultValue > 0 && resultValue <= MAX_DISPLAY_ITEMS) {
-                     const rawCombs = generateCombinations(elements, k);
-                     // Ensure uniqueness for combinations
-                     results = [...new Set(rawCombs.map(comb => comb.sort().join(',')))].map(s => s.split(','));
-                 }
-                resultOutput.innerHTML = `Antal kombinationer C(${n}, ${k}) = <strong>${resultValue}</strong>`;
-            }
-
-            if (results.length > 0) {
-                visualizer.innerHTML = `<h4>${headerText}</h4>`;
-                const list = document.createElement('div');
-                list.className = 'pc-results-list';
-                results.forEach(item => list.appendChild(formatItem(item)));
-                visualizer.appendChild(list);
-            } else if (resultValue > MAX_DISPLAY_ITEMS) {
-                visualizer.innerHTML = `<p>(För ${resultValue} ${isPermutation ? 'permutationer' : 'kombinationer'} att visualisera här)</p>`;
-            } else if (resultValue === 0) {
-                 visualizer.innerHTML = `<p>Inga ${isPermutation ? 'permutationer' : 'kombinationer'} att visa.</p>`;
-            }
+            const elsStr = elementsInput.value.trim(); const els = elsStr ? elsStr.split(',').map(el => el.trim()).filter(el => el) : []; const k = parseInt(kInput.value, 10); const n = els.length;
+            resultOutput.innerHTML = ''; visualizer.innerHTML = ''; if (n === 0) { resultOutput.innerHTML = '<span style="color: orange;">Ange minst ett element.</span>'; return; } if (isNaN(k) || k < 0) { resultOutput.innerHTML = '<span style="color: red;">Ange ett giltigt positivt heltal för k.</span>'; return; } if (k > n) { resultOutput.innerHTML = '<span style="color: red;">k kan inte vara större än n.</span>'; return; }
+            let rVal, res = [], hTxt, iClass, fItem; const MAX_ITEMS = 50;
+            if (isPermutation) { rVal = permutations(n, k); hTxt = 'Exempel på Permutationer (ordnade sekvenser):'; iClass = 'perm-item'; fItem = (p) => { const d = document.createElement('div'); d.className = iClass; p.forEach(el => { const s = document.createElement('span'); s.textContent = el; d.appendChild(s); }); return d; }; if (rVal > 0 && rVal <= MAX_ITEMS) res = generatePermutations(els, k); resultOutput.innerHTML = `Antal permutationer P(${n}, ${k}) = <strong>${rVal}</strong>`; }
+            else { rVal = combinations(n, k); hTxt = 'Exempel på Kombinationer (oordnade grupper):'; iClass = 'comb-group'; fItem = (c) => { const d = document.createElement('div'); d.className = iClass; d.textContent = `{ ${c.sort().join(', ')} }`; return d; }; if (rVal > 0 && rVal <= MAX_ITEMS) { const raw = generateCombinations(els, k); res = [...new Set(raw.map(c => c.sort().join(',')))].map(s => s.split(',')); } resultOutput.innerHTML = `Antal kombinationer C(${n}, ${k}) = <strong>${rVal}</strong>`; }
+            if (res.length > 0) { visualizer.innerHTML = `<h4>${hTxt}</h4>`; const list = document.createElement('div'); list.className = 'pc-results-list'; res.forEach(item => list.appendChild(fItem(item))); visualizer.appendChild(list); } else if (rVal > MAX_ITEMS) { visualizer.innerHTML = `<p>(För ${rVal} ${isPermutation ? 'permutationer' : 'kombinationer'} att visualisera här)</p>`; } else if (rVal === 0) { visualizer.innerHTML = `<p>Inga ${isPermutation ? 'permutationer' : 'kombinationer'} att visa.</p>`; }
         }
-
-        calcBtn.addEventListener('click', updateVisualization);
-        updateVisualization(); // Initial calculation
+        calcBtn.addEventListener('click', updateVisualization); updateVisualization();
     }
 
 
     // --- Function to Create Term Cards (Refactored) ---
     function createTermCard(term) {
-        const card = document.createElement('div');
-        card.className = 'term-card';
-        const title = document.createElement('h4');
-        title.className = 'term-title';
-        title.innerHTML = term.name;
-        const definition = document.createElement('div');
-        definition.className = 'term-definition';
-        definition.innerHTML = term.definition;
-        card.appendChild(title);
-        card.appendChild(definition);
+        const card = document.createElement('div'); card.className = 'term-card';
+        const title = document.createElement('h4'); title.className = 'term-title'; title.innerHTML = term.name;
+        const definition = document.createElement('div'); definition.className = 'term-definition'; definition.innerHTML = term.definition;
+        card.appendChild(title); card.appendChild(definition);
 
-        const visContainer = document.createElement('div');
-        visContainer.className = 'graph-visualization'; // Base class
-        visContainer.style.height = '250px';
-        visContainer.style.display = 'none'; // Hide initially
+        const visContainer = document.createElement('div'); visContainer.className = 'graph-visualization';
+        visContainer.style.height = '250px'; visContainer.style.display = 'none';
         card.appendChild(visContainer);
 
-        let visualizationCreated = false;
-        let network = null;
-        // Removed networkData declaration here, get it inside if(network) checks
-        let nodes = [], edges = [], options = JSON.parse(JSON.stringify(defaultVisOptions)); // Deep copy options
+        let visualizationCreated = false; let network = null;
+        let nodes = [], edges = [], options = JSON.parse(JSON.stringify(defaultVisOptions));
 
         try {
-            // --- Determine Visualization Type and Data ---
             if (term.name.startsWith("Graf (Graph)")) {
-                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}];
-                edges = [{from: 1, to: 2}, {from: 1, to: 3}, {from: 2, to: 3}];
+                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}]; edges = [{from: 1, to: 2}, {from: 1, to: 3}, {from: 2, to: 3}];
                 network = createVisualization(visContainer, nodes, edges, options);
             } else if (term.name.startsWith("Kant (Edge) / Båge (Arc)")) {
-                nodes = [{id: 1, label: 'Nod 1'}, {id: 2, label: 'Nod 2'}];
-                edges = [ {id: 'e1', from: 1, to: 2, label: 'Kant (Edge)'}, {id: 'a1', from: 2, to: 1, label: 'Båge (Arc)', arrows: 'to'} ];
-                options.edges.font = { align: 'top' }; // Modify copy
-                network = createVisualization(visContainer, nodes, edges, options);
+                nodes = [{id: 1, label: 'Nod 1'}, {id: 2, label: 'Nod 2'}]; edges = [ {id: 'e1', from: 1, to: 2, label: 'Kant (Edge)'}, {id: 'a1', from: 2, to: 1, label: 'Båge (Arc)', arrows: 'to'} ];
+                options.edges.font = { align: 'top' }; network = createVisualization(visContainer, nodes, edges, options);
             } else if (term.name.startsWith("Grad (Degree)") || term.name.startsWith("Ingrad (In-degree)") || term.name.startsWith("Utgrad (Out-degree)")) {
                 const isDirected = term.name.includes("Ingrad") || term.name.includes("Utgrad");
-                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}, {id: 4, label: 'D'}];
-                edges = [{from: 1, to: 2}, {from: 1, to: 3}, {from: 2, to: 3}, {from: 3, to: 4}];
-                if (isDirected) {
-                    edges.push({from: 4, to: 1, arrows: 'to'});
-                    edges.forEach(e => e.arrows = e.arrows || 'to');
-                } else {
-                    edges.push({from: 1, to: 1}); // Loop
-                }
-                options.edges.arrows = { to: { enabled: isDirected } }; // Modify copy
-                network = createVisualization(visContainer, nodes, edges, options);
+                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}, {id: 4, label: 'D'}]; edges = [{from: 1, to: 2}, {from: 1, to: 3}, {from: 2, to: 3}, {from: 3, to: 4}];
+                if (isDirected) { edges.push({from: 4, to: 1, arrows: 'to'}); edges.forEach(e => e.arrows = e.arrows || 'to'); } else { edges.push({from: 1, to: 1}); }
+                options.edges.arrows = { to: { enabled: isDirected } }; network = createVisualization(visContainer, nodes, edges, options);
                 if (network) setupDegreeInteraction(visContainer, network, network.body.data, isDirected);
             } else if (["Vandring (Walk)", "Väg (Path)", "Stig (Simple Path)", "Krets (Circuit)", "Cykel (Cycle)"].includes(term.name.split(" / ")[0])) {
-                nodes = [ {id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}, {id: 4, label: 'D'}, {id: 5, label: 'E'} ];
-                edges = [ {id: 'e1', from: 1, to: 2}, {id: 'e2', from: 1, to: 3}, {id: 'e3', from: 2, to: 3}, {id: 'e4', from: 3, to: 4}, {id: 'e5', from: 4, to: 5}, {id: 'e6', from: 5, to: 3} ]; // Cycle 3-4-5-3
+                nodes = [ {id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}, {id: 4, label: 'D'}, {id: 5, label: 'E'} ]; edges = [ {id: 'e1', from: 1, to: 2}, {id: 'e2', from: 1, to: 3}, {id: 'e3', from: 2, to: 3}, {id: 'e4', from: 3, to: 4}, {id: 'e5', from: 4, to: 5}, {id: 'e6', from: 5, to: 3} ];
                 network = createVisualization(visContainer, nodes, edges, options);
                 if (network) setupWalkInteraction(visContainer, network, network.body.data);
             } else if (term.name.startsWith("Komplett Graf")) {
-                const n = 5; nodes = Array.from({ length: n }, (_, i) => ({ id: i + 1, label: `v${i + 1}` })); edges = [];
-                for (let i = 1; i <= n; i++) for (let j = i + 1; j <= n; j++) edges.push({ from: i, to: j });
-                options.physics.stabilization = { iterations: 200 }; // Modify copy
-                network = createVisualization(visContainer, nodes, edges, options);
+                const n = 5; nodes = Array.from({ length: n }, (_, i) => ({ id: i + 1, label: `v${i + 1}` })); edges = []; for (let i = 1; i <= n; i++) for (let j = i + 1; j <= n; j++) edges.push({ from: i, to: j });
+                options.physics.stabilization = { iterations: 200 }; network = createVisualization(visContainer, nodes, edges, options);
             } else if (term.name.startsWith("Komplementgraf")) {
-                nodes = [ {id: 1, label: '1'}, {id: 2, label: '2'}, {id: 3, label: '3'}, {id: 4, label: '4'} ]; // P4
-                const originalEdges = [ {from: 1, to: 2}, {from: 2, to: 3}, {from: 3, to: 4} ];
-                const complementEdges = []; const existing = new Set(originalEdges.map(e => `${Math.min(e.from, e.to)}-${Math.max(e.from, e.to)}`));
-                for (let i = 1; i <= nodes.length; i++) for (let j = i + 1; j <= nodes.length; j++) if (!existing.has(`${i}-${j}`)) complementEdges.push({ from: i, to: j, color: { color: '#e74c3c', highlight: '#c0392b' }, dashes: true });
-                edges = [ ...originalEdges.map(e => ({ ...e, color: { color: '#bdc3c7', highlight: '#95a5a6' }, width: 1 })), ...complementEdges ];
+                nodes = [ {id: 1, label: '1'}, {id: 2, label: '2'}, {id: 3, label: '3'}, {id: 4, label: '4'} ]; const oE = [ {from: 1, to: 2}, {from: 2, to: 3}, {from: 3, to: 4} ];
+                const cE = []; const ex = new Set(oE.map(e => `${Math.min(e.from, e.to)}-${Math.max(e.from, e.to)}`));
+                for (let i = 1; i <= nodes.length; i++) for (let j = i + 1; j <= nodes.length; j++) if (!ex.has(`${i}-${j}`)) cE.push({ from: i, to: j, color: { color: '#e74c3c', highlight: '#c0392b' }, dashes: true });
+                edges = [ ...oE.map(e => ({ ...e, color: { color: '#bdc3c7', highlight: '#95a5a6' }, width: 1 })), ...cE ];
                 network = createVisualization(visContainer, nodes, edges, options);
                  if (network) { visContainer.insertAdjacentHTML('beforeend', '<p style="font-size:0.9em; text-align:center; margin-top: 5px;">Original (grå). Komplement (röd/streckad) = saknade kanter för K<sub>4</sub>.</p>'); }
             } else if (term.name.startsWith("Delgraf")) {
-                 nodes = [ {id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}, {id: 4, label: 'D'}, {id: 5, label: 'E'} ];
-                 edges = [ {id: 'e1', from: 1, to: 2}, {id: 'e2', from: 1, to: 3}, {id: 'e3', from: 2, to: 3}, {id: 'e4', from: 3, to: 4}, {id: 'e5', from: 4, to: 5}, {id: 'e6', from: 5, to: 3} ];
-                 // Highlight subgraph V'={1,2,3,4}, E'={e1,e2,e3,e4}
-                 const subNodes = nodes.map(n => [1,2,3,4].includes(n.id) ? {...n, color: { background: '#d1e9ff', border: '#2c3e50'}} : n);
-                 const subEdges = edges.map(e => ['e1','e2','e3','e4'].includes(e.id) ? {...e, color: defaultVisOptions.edges.color.highlight, width: 3} : e);
-                 network = createVisualization(visContainer, subNodes, subEdges, options);
+                 nodes = [ {id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}, {id: 4, label: 'D'}, {id: 5, label: 'E'} ]; edges = [ {id: 'e1', from: 1, to: 2}, {id: 'e2', from: 1, to: 3}, {id: 'e3', from: 2, to: 3}, {id: 'e4', from: 3, to: 4}, {id: 'e5', from: 4, to: 5}, {id: 'e6', from: 5, to: 3} ];
+                 const sN = nodes.map(n => [1,2,3,4].includes(n.id) ? {...n, color: { background: '#d1e9ff', border: '#2c3e50'}} : n);
+                 const sE = edges.map(e => ['e1','e2','e3','e4'].includes(e.id) ? {...e, color: defaultVisOptions.edges.color.highlight, width: 3} : e);
+                 network = createVisualization(visContainer, sN, sE, options);
                  if (network) { visContainer.insertAdjacentHTML('beforeend', '<p style="font-size:0.9em; text-align:center; margin-top: 5px;">Markerad delgraf (A,B,C,D och deras kanter).</p>'); }
             } else if (term.name.startsWith("Bipartit Graf") && !term.name.startsWith("Komplett Bipartit Graf")) {
-                 const m = 3, n = 2; nodes = [];
-                 for (let i = 1; i <= m; i++) nodes.push({ id: `U${i}`, label: `U${i}`, group: 0, level: 0 });
-                 for (let i = 1; i <= n; i++) nodes.push({ id: `W${i}`, label: `W${i}`, group: 1, level: 1 });
+                 const m = 3, n = 2; nodes = []; for (let i = 1; i <= m; i++) nodes.push({ id: `U${i}`, label: `U${i}`, group: 0, level: 0 }); for (let i = 1; i <= n; i++) nodes.push({ id: `W${i}`, label: `W${i}`, group: 1, level: 1 });
                  edges = [ { from: 'U1', to: 'W1' }, { from: 'U2', to: 'W1' }, { from: 'U2', to: 'W2' }, { from: 'U3', to: 'W2' } ];
                  options = { ...options, nodes: { ...options.nodes, shape: 'box', color: undefined }, edges: { ...options.edges, arrows: { to: { enabled: false } } }, physics: false, groups: { 0: { color: { background: '#f1c40f', border: '#e67e22' } }, 1: { color: { background: '#3498db', border: '#2980b9', font:{color:'#fff'} } } }, layout: { hierarchical: { enabled: true, direction: 'LR', sortMethod: 'hubsize', levelSeparation: 200, nodeSpacing: 100 } } };
                  network = createVisualization(visContainer, nodes, edges, options);
                  if (network) { visContainer.insertAdjacentHTML('beforeend', '<p style="font-size:0.9em; text-align:center; margin-top: 5px;">Bipartit: Kanter endast mellan U (gul) och W (blå).</p>'); }
             } else if (term.name.startsWith("Komplett Bipartit Graf")) {
-                 const m = 3, n = 2; nodes = [];
-                 for (let i = 1; i <= m; i++) nodes.push({ id: `U${i}`, label: `U${i}`, group: 0, level: 0 });
-                 for (let i = 1; i <= n; i++) nodes.push({ id: `W${i}`, label: `W${i}`, group: 1, level: 1 });
+                 const m = 3, n = 2; nodes = []; for (let i = 1; i <= m; i++) nodes.push({ id: `U${i}`, label: `U${i}`, group: 0, level: 0 }); for (let i = 1; i <= n; i++) nodes.push({ id: `W${i}`, label: `W${i}`, group: 1, level: 1 });
                  edges = []; for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) edges.push({ from: `U${i}`, to: `W${j}` });
                  options = { ...options, nodes: { ...options.nodes, shape: 'box', color: undefined }, edges: { ...options.edges, arrows: { to: { enabled: false } } }, physics: false, groups: { 0: { color: { background: '#f1c40f', border: '#e67e22' } }, 1: { color: { background: '#3498db', border: '#2980b9', font:{color:'#fff'} } } }, layout: { hierarchical: { enabled: true, direction: 'LR', sortMethod: 'hubsize', levelSeparation: 200, nodeSpacing: 100 } } };
                  network = createVisualization(visContainer, nodes, edges, options);
                  if (network) { visContainer.insertAdjacentHTML('beforeend', `<p style="font-size:0.9em; text-align:center; margin-top: 5px;">Komplett Bipartit K<sub>${m},${n}</sub>: Alla U kopplade till alla W.</p>`); }
             } else if (term.name.startsWith("Multipla Kanter")) {
-                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}]; edges = [{from: 1, to: 2}, {from: 1, to: 2}, {from: 1, to: 2}];
-                network = createVisualization(visContainer, nodes, edges, options);
+                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}]; edges = [{from: 1, to: 2}, {from: 1, to: 2}, {from: 1, to: 2}]; network = createVisualization(visContainer, nodes, edges, options);
             } else if (term.name.startsWith("Ögla (Loop)")) {
-                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}]; edges = [{from: 1, to: 1}, {from: 1, to: 2}];
-                network = createVisualization(visContainer, nodes, edges, options);
+                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}]; edges = [{from: 1, to: 1}, {from: 1, to: 2}]; network = createVisualization(visContainer, nodes, edges, options);
             } else if (term.name.startsWith("Multigraf")) {
-                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}]; edges = [ {from: 1, to: 1}, {from: 1, to: 2}, {from: 1, to: 2}, {from: 2, to: 3} ];
-                network = createVisualization(visContainer, nodes, edges, options);
+                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}]; edges = [ {from: 1, to: 1}, {from: 1, to: 2}, {from: 1, to: 2}, {from: 2, to: 3} ]; network = createVisualization(visContainer, nodes, edges, options);
             } else if (term.name.startsWith("Enkel Graf")) {
-                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}]; edges = [{from: 1, to: 2}, {from: 2, to: 3}];
-                network = createVisualization(visContainer, nodes, edges, options);
+                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}]; edges = [{from: 1, to: 2}, {from: 2, to: 3}]; network = createVisualization(visContainer, nodes, edges, options);
             } else if (term.name.startsWith("Riktad Graf")) {
                 nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}]; edges = [ {from: 1, to: 2, arrows: 'to'}, {from: 1, to: 3, arrows: 'to'}, {from: 3, to: 2, arrows: 'to'} ];
-                options.edges.arrows = { to: { enabled: true } }; // Modify copy
-                network = createVisualization(visContainer, nodes, edges, options);
+                options.edges.arrows = { to: { enabled: true } }; network = createVisualization(visContainer, nodes, edges, options);
             } else if (term.name.startsWith("Oriktad Graf")) {
-                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}]; edges = [{from: 1, to: 2}, {from: 1, to: 3}, {from: 2, to: 3}];
-                network = createVisualization(visContainer, nodes, edges, options);
+                nodes = [{id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}]; edges = [{from: 1, to: 2}, {from: 1, to: 3}, {from: 2, to: 3}]; network = createVisualization(visContainer, nodes, edges, options);
             } else if (term.name.startsWith("Eulerväg") || term.name.startsWith("Eulerkrets")) {
-                nodes = [ {id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}, {id: 4, label: 'D'}, {id: 5, label: 'E'} ];
-                // Königsberg variation: A,D odd degree(3); B,C even(4) -> Euler Path exists
-                edges = [ {id: 'e1', from: 1, to: 2}, {id: 'e2', from: 1, to: 2}, {id: 'e3', from: 1, to: 3}, {id: 'e4', from: 1, to: 3}, {id: 'e5', from: 1, to: 4}, {id: 'e6', from: 2, to: 3}, {id: 'e7', from: 2, to: 3}, {id: 'e8', from: 3, to: 4} ];
+                nodes = [ {id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}, {id: 4, label: 'D'}, {id: 5, label: 'E'} ]; edges = [ {id: 'e1', from: 1, to: 2}, {id: 'e2', from: 1, to: 2}, {id: 'e3', from: 1, to: 3}, {id: 'e4', from: 1, to: 3}, {id: 'e5', from: 1, to: 4}, {id: 'e6', from: 2, to: 3}, {id: 'e7', from: 2, to: 3}, {id: 'e8', from: 3, to: 4} ];
                 network = createVisualization(visContainer, nodes, edges, options);
                 if (network) setupEulerInteraction(visContainer, network, network.body.data, edges.length);
             } else if (term.name.startsWith("Hamiltonstig") || term.name.startsWith("Hamiltoncykel")) {
-                nodes = [ {id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}, {id: 4, label: 'D'}, {id: 5, label: 'E'} ];
-                edges = [ {id: 'e1', from: 1, to: 2}, {id: 'e2', from: 2, to: 3}, {id: 'e3', from: 3, to: 4}, {id: 'e4', from: 4, to: 5}, {id: 'e5', from: 5, to: 1}, {id: 'e6', from: 1, to: 3}, {id: 'e7', from: 2, to: 4}, {id: 'e8', from: 3, to: 5}, {id: 'e9', from: 4, to: 1}, {id: 'e10', from: 5, to: 2} ]; // Has Hamilton cycles
+                nodes = [ {id: 1, label: 'A'}, {id: 2, label: 'B'}, {id: 3, label: 'C'}, {id: 4, label: 'D'}, {id: 5, label: 'E'} ]; edges = [ {id: 'e1', from: 1, to: 2}, {id: 'e2', from: 2, to: 3}, {id: 'e3', from: 3, to: 4}, {id: 'e4', from: 4, to: 5}, {id: 'e5', from: 5, to: 1}, {id: 'e6', from: 1, to: 3}, {id: 'e7', from: 2, to: 4}, {id: 'e8', from: 3, to: 5}, {id: 'e9', from: 4, to: 1}, {id: 'e10', from: 5, to: 2} ];
                 network = createVisualization(visContainer, nodes, edges, options);
                 if (network) setupHamiltonInteraction(visContainer, network, network.body.data, nodes.length);
             } else if (term.name.startsWith("Permutation") || term.name.startsWith("Kombination")) {
-                // Setup non-graph interaction
-                setupPermCombInteraction(visContainer, term);
-                visualizationCreated = true; // Mark as created even if not a graph
+                setupPermCombInteraction(visContainer, term); visualizationCreated = true;
             }
 
-            // If a network was created (and not handled by a specific setup function like PermComb)
-            if (network) {
-                visualizationCreated = true;
-            }
+            if (network) { visualizationCreated = true; }
 
         } catch (error) {
              console.error(`Error setting up visualization for term "${term.name}":`, error);
              visContainer.innerHTML = '<p style="color: red;">Error: Kunde inte skapa visualisering.</p>';
-             visualizationCreated = true; // Show error message
+             visualizationCreated = true;
         }
 
-        // Show container only if something was successfully created/set up
-        if (visualizationCreated) {
-            visContainer.style.display = 'block';
-        }
-
+        if (visualizationCreated) { visContainer.style.display = 'block'; }
         return card;
     }
 
     // --- Function to Create Modeling Example Cards ---
     function createModelingCard(example) {
-        const card = document.createElement('div');
-        card.className = 'term-card';
-        const title = document.createElement('h3');
-        title.textContent = example.title;
-        const descriptionDiv = document.createElement('div');
-        descriptionDiv.innerHTML = example.description;
-        card.appendChild(title);
-        card.appendChild(descriptionDiv);
-
+        const card = document.createElement('div'); card.className = 'term-card';
+        const title = document.createElement('h3'); title.textContent = example.title;
+        const descriptionDiv = document.createElement('div'); descriptionDiv.innerHTML = example.description;
+        card.appendChild(title); card.appendChild(descriptionDiv);
         const visPlaceholder = descriptionDiv.querySelector('.graph-visualization');
         if (visPlaceholder) {
-            visPlaceholder.id = `vis-${example.title.replace(/\s+/g, '-')}`;
-            visPlaceholder.textContent = '';
-            visPlaceholder.style.height = '250px';
-            visPlaceholder.style.backgroundColor = 'var(--card-bg)';
-
-            // Add specific visualizations (using setTimeout to ensure DOM is ready)
+            visPlaceholder.id = `vis-${example.title.replace(/\s+/g, '-')}`; visPlaceholder.textContent = '';
+            visPlaceholder.style.height = '250px'; visPlaceholder.style.backgroundColor = 'var(--card-bg)';
             setTimeout(() => {
                 try {
-                    let options = JSON.parse(JSON.stringify(defaultVisOptions)); // Deep copy
+                    let options = JSON.parse(JSON.stringify(defaultVisOptions));
                     if (example.title.startsWith("Tidsplanering")) {
-                        options.edges.arrows = { to: { enabled: true } };
-                        options.edges.font = { align: 'top' };
-                        createVisualization(visPlaceholder,
-                            [{id: 1, label: 'Start'}, {id: 2, label: 'Grund Klar'}, {id: 3, label: 'Väggar Resta'}, {id: 4, label: 'Tak Lagt'}, {id: 5, label: 'Slut'}],
-                            [{from: 1, to: 2, label: 'Gjuta Grund (5d)', arrows: 'to'}, {from: 2, to: 3, label: 'Resa Väggar (7d)', arrows: 'to'}, {from: 3, to: 4, label: 'Lägga Tak (4d)', arrows: 'to'}, {from: 4, to: 5, label: 'Interna Jobb (6d)', arrows: 'to'}, {from: 2, to: 4, label: 'Rördragning (8d)', arrows: 'to'}],
-                            options
-                        );
+                        options.edges.arrows = { to: { enabled: true } }; options.edges.font = { align: 'top' };
+                        createVisualization(visPlaceholder, [{id: 1, label: 'Start'}, {id: 2, label: 'Grund Klar'}, {id: 3, label: 'Väggar Resta'}, {id: 4, label: 'Tak Lagt'}, {id: 5, label: 'Slut'}], [{from: 1, to: 2, label: 'Gjuta Grund (5d)', arrows: 'to'}, {from: 2, to: 3, label: 'Resa Väggar (7d)', arrows: 'to'}, {from: 3, to: 4, label: 'Lägga Tak (4d)', arrows: 'to'}, {from: 4, to: 5, label: 'Interna Jobb (6d)', arrows: 'to'}, {from: 2, to: 4, label: 'Rördragning (8d)', arrows: 'to'}], options);
                     } else if (example.title.startsWith("Radbrytning")) {
-                        const nodes = [{id: 0, label: 'Start'}, {id: 1, label: 'Efter "ord1"'}, {id: 2, label: 'Efter "ord2"'}, {id: 3, label: 'Efter "ord3"'}, {id: 4, label: 'Efter "ord4"'}, {id: 5, label: 'Slut'}];
-                        const edges = [{from: 0, to: 2, label: '"ord1 ord2"', arrows: 'to'}, {from: 0, to: 3, label: '"ord1 ord2 ord3"', arrows: 'to', color: {opacity:0.3}, dashes:true}, {from: 2, to: 4, label: '"ord3 ord4"', arrows: 'to'}, {from: 4, to: 5, label: '""', arrows: 'to'}, {from: 0, to: 1, label: '"ord1"', arrows: 'to'}, {from: 1, to: 3, label: '"ord2 ord3"', arrows: 'to'}, {from: 3, to: 5, label: '"ord4"', arrows: 'to'}];
-                        options.edges.arrows = { to: { enabled: true } };
-                        options.edges.font = { align: 'middle', size: 10 };
-                        options.layout = { hierarchical: { enabled: true, direction: 'LR', sortMethod: 'directed' } };
-                        options.physics = false;
-                        createVisualization(visPlaceholder, nodes, edges, options);
-                        visPlaceholder.insertAdjacentHTML('beforeend', '<p style="font-size:0.9em; text-align:center; margin-top: 5px;">Förenklad visualisering: Noder är brytpunkter, kanter är möjliga rader.</p>');
+                        const nodes = [{id: 0, label: 'Start'}, {id: 1, label: 'Efter "ord1"'}, {id: 2, label: 'Efter "ord2"'}, {id: 3, label: 'Efter "ord3"'}, {id: 4, label: 'Efter "ord4"'}, {id: 5, label: 'Slut'}]; const edges = [{from: 0, to: 2, label: '"ord1 ord2"', arrows: 'to'}, {from: 0, to: 3, label: '"ord1 ord2 ord3"', arrows: 'to', color: {opacity:0.3}, dashes:true}, {from: 2, to: 4, label: '"ord3 ord4"', arrows: 'to'}, {from: 4, to: 5, label: '""', arrows: 'to'}, {from: 0, to: 1, label: '"ord1"', arrows: 'to'}, {from: 1, to: 3, label: '"ord2 ord3"', arrows: 'to'}, {from: 3, to: 5, label: '"ord4"', arrows: 'to'}];
+                        options.edges.arrows = { to: { enabled: true } }; options.edges.font = { align: 'middle', size: 10 }; options.layout = { hierarchical: { enabled: true, direction: 'LR', sortMethod: 'directed' } }; options.physics = false;
+                        createVisualization(visPlaceholder, nodes, edges, options); visPlaceholder.insertAdjacentHTML('beforeend', '<p style="font-size:0.9em; text-align:center; margin-top: 5px;">Förenklad visualisering: Noder är brytpunkter, kanter är möjliga rader.</p>');
                     } else if (example.title.startsWith("Lösning av Instant Insanity")) {
-                        const colors = ['R', 'G', 'B', 'Y'];
-                        const nodes = colors.map((c, i) => ({id: c, label: c, x: Math.cos(i*2*Math.PI/4)*100, y: Math.sin(i*2*Math.PI/4)*100}));
-                        const edges = [{from: 'R', to: 'G', label: 'K1', color: '#e74c3c'}, {from: 'B', to: 'Y', label: 'K2', color: '#3498db'}, {from: 'R', to: 'B', label: 'K3', color: '#2ecc71'}, {from: 'G', to: 'Y', label: 'K4', color: '#f1c40f'}]; // Example Front/Back pairs
-                        options.physics = { enabled: false };
-                        options.edges.font = { align: 'top', size: 12, strokeWidth: 3, strokeColor: 'white' };
-                        createVisualization(visPlaceholder, nodes, edges, options);
-                        visPlaceholder.insertAdjacentHTML('beforeend', '<p style="font-size:0.9em; text-align:center; margin-top: 5px;">Exempelgraf (Fram/Bak-sidor). Noder=färger, Kanter=motsatta sidor.</p>');
+                        const colors = ['R', 'G', 'B', 'Y']; const nodes = colors.map((c, i) => ({id: c, label: c, x: Math.cos(i*2*Math.PI/4)*100, y: Math.sin(i*2*Math.PI/4)*100}));
+                        const edges = [{from: 'R', to: 'G', label: 'K1', color: '#e74c3c'}, {from: 'B', to: 'Y', label: 'K2', color: '#3498db'}, {from: 'R', to: 'B', label: 'K3', color: '#2ecc71'}, {from: 'G', to: 'Y', label: 'K4', color: '#f1c40f'}];
+                        options.physics = { enabled: false }; options.edges.font = { align: 'top', size: 12, strokeWidth: 3, strokeColor: 'white' };
+                        createVisualization(visPlaceholder, nodes, edges, options); visPlaceholder.insertAdjacentHTML('beforeend', '<p style="font-size:0.9em; text-align:center; margin-top: 5px;">Exempelgraf (Fram/Bak-sidor). Noder=färger, Kanter=motsatta sidor.</p>');
                     }
-                } catch (error) {
-                    console.error(`Error creating visualization for example "${example.title}":`, error);
-                    visPlaceholder.innerHTML = '<p style="color: red;">Error: Kunde inte skapa visualisering.</p>';
-                }
-            }, 100); // Small delay
+                } catch (error) { console.error(`Error creating visualization for example "${example.title}":`, error); visPlaceholder.innerHTML = '<p style="color: red;">Error: Kunde inte skapa visualisering.</p>'; }
+            }, 100);
         }
         return card;
     }
 
     // --- Theme Toggle ---
-    const themeToggleButton = document.getElementById('theme-toggle');
-    const body = document.body;
-    const currentTheme = localStorage.getItem('theme');
-    function applyTheme(theme) {
-        if (theme === 'dark') {
-            body.classList.add('dark-mode');
-            if (themeToggleButton) themeToggleButton.textContent = '☀️';
-        } else {
-            body.classList.remove('dark-mode');
-            if (themeToggleButton) themeToggleButton.textContent = '🌙';
-        }
-    }
-    applyTheme(currentTheme); // Apply initial theme
-    if (themeToggleButton) {
-        themeToggleButton.addEventListener('click', () => {
-            const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark';
-            applyTheme(newTheme);
-            localStorage.setItem('theme', newTheme);
-        });
-    }
+    const themeToggleButton = document.getElementById('theme-toggle'); const body = document.body; const currentTheme = localStorage.getItem('theme');
+    function applyTheme(theme) { if (theme === 'dark') { body.classList.add('dark-mode'); if (themeToggleButton) themeToggleButton.textContent = '☀️'; } else { body.classList.remove('dark-mode'); if (themeToggleButton) themeToggleButton.textContent = '🌙'; } }
+    applyTheme(currentTheme);
+    if (themeToggleButton) { themeToggleButton.addEventListener('click', () => { const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark'; applyTheme(newTheme); localStorage.setItem('theme', newTheme); }); }
 
-    // --- Content Population Logic (Corrected) ---
+    // --- Content Population Logic (Corrected + Logging) ---
+    console.log("Starting content population..."); // LOG: Start
     const mainContentSection = document.querySelector('main > section[id]');
+
     if (mainContentSection) {
         const sectionId = mainContentSection.id;
-        console.log("Populating section:", sectionId); // Debug log
+        console.log("Found content section with ID:", sectionId); // LOG: Found section
 
-        let categoryNameToLoad = null;
-        let isModelingPage = false;
+        let categoryNameToLoad = null; let isModelingPage = false;
 
-        // Map section IDs to category names explicitly
         switch (sectionId) {
-            case 'generella-termer-content':
-                categoryNameToLoad = "Generella Termer";
-                break;
-            case 'nods-grad-content':
-                categoryNameToLoad = "En Nods Grad (Degree of a Node)";
-                break;
-            case 'forflytta-graf-content':
-                categoryNameToLoad = "Att Förflytta Sig i en Graf";
-                break;
-            case 'kompletta-bipartita-content':
-                categoryNameToLoad = "Kompletta Grafer, Bipartita Grafer och Relaterade Begrepp";
-                break;
-            case 'kanttyper-variationer-content':
-                categoryNameToLoad = "Kanttyper och Grafvariationer";
-                break;
-            case 'euler-hamilton-content':
-                categoryNameToLoad = "Euler och Hamilton";
-                break;
-            case 'permutationer-kombinationer-content':
-                categoryNameToLoad = "Permutationer och Kombinationer";
-                break;
-            case 'modeling-examples':
-                isModelingPage = true;
-                break;
-            case 'overview':
-                // No dynamic content needed for overview page
-                break;
-            default:
-                console.warn("No content loading logic defined for section ID:", sectionId);
-                mainContentSection.innerHTML += '<p style="color: orange;">Innehåll kunde inte laddas för denna sektion (okänd ID).</p>';
+            case 'generella-termer-content': categoryNameToLoad = "Generella Termer"; break;
+            case 'nods-grad-content': categoryNameToLoad = "En Nods Grad (Degree of a Node)"; break;
+            case 'forflytta-graf-content': categoryNameToLoad = "Att Förflytta Sig i en Graf"; break;
+            case 'kompletta-bipartita-content': categoryNameToLoad = "Kompletta Grafer, Bipartita Grafer och Relaterade Begrepp"; break;
+            case 'kanttyper-variationer-content': categoryNameToLoad = "Kanttyper och Grafvariationer"; break;
+            case 'euler-hamilton-content': categoryNameToLoad = "Euler och Hamilton"; break;
+            case 'permutationer-kombinationer-content': categoryNameToLoad = "Permutationer och Kombinationer"; break;
+            case 'modeling-examples': isModelingPage = true; break;
+            case 'overview': console.log("On overview page, no dynamic content needed."); break;
+            default: console.warn("No content loading logic defined for section ID:", sectionId); mainContentSection.innerHTML += '<p style="color: orange;">Innehåll kunde inte laddas för denna sektion (okänd ID).</p>';
         }
 
-        // Populate content based on determined category or modeling flag
+        console.log(`Determined category: ${categoryNameToLoad}, Is modeling page: ${isModelingPage}`); // LOG: Determined type
+
         if (categoryNameToLoad) {
+            console.log("Attempting to find category data for:", categoryNameToLoad); // LOG: Finding category data
             const categoryData = graphData.definitions.find(cat => cat.category === categoryNameToLoad);
             if (categoryData) {
-                categoryData.terms.forEach(term => {
-                    try {
-                        const termCard = createTermCard(term);
-                        mainContentSection.appendChild(termCard);
-                    } catch (e) {
-                        console.error(`Error creating card for term "${term.name}" in category "${categoryNameToLoad}":`, e);
-                        // Optionally add error feedback inside the section
-                        mainContentSection.innerHTML += `<p style="color: red;">Fel vid skapande av kort för "${term.name}".</p>`;
-                    }
+                console.log("Found category data. Populating terms..."); // LOG: Found category data
+                categoryData.terms.forEach((term, index) => {
+                    console.log(`Creating card for term ${index + 1}: ${term.name}`); // LOG: Creating term card
+                    try { const termCard = createTermCard(term); mainContentSection.appendChild(termCard); console.log(`Appended card for term: ${term.name}`); } // LOG: Appended term card
+                    catch (e) { console.error(`Error creating card for term "${term.name}" in category "${categoryNameToLoad}":`, e); mainContentSection.innerHTML += `<p style="color: red;">Fel vid skapande av kort för "${term.name}".</p>`; }
                 });
-            } else {
-                console.error(`Category data not found in graphData for: ${categoryNameToLoad}`);
-                mainContentSection.innerHTML += `<p style="color: red;">Error: Kunde inte hitta data för kategori "${categoryNameToLoad}".</p>`;
-            }
+            } else { console.error(`Category data NOT FOUND in graphData for: ${categoryNameToLoad}`); mainContentSection.innerHTML += `<p style="color: red;">Error: Kunde inte hitta data för kategori "${categoryNameToLoad}".</p>`; } // LOG: Category data not found
         } else if (isModelingPage) {
-            graphData.modelingExamples.forEach(example => {
-                 try {
-                    const exampleCard = createModelingCard(example);
-                    mainContentSection.appendChild(exampleCard);
-                 } catch (e) {
-                     console.error(`Error creating card for example "${example.title}":`, e);
-                     mainContentSection.innerHTML += `<p style="color: red;">Fel vid skapande av kort för exempel "${example.title}".</p>`;
-                 }
+            console.log("Populating modeling examples..."); // LOG: Populating examples
+            graphData.modelingExamples.forEach((example, index) => {
+                 console.log(`Creating card for example ${index + 1}: ${example.title}`); // LOG: Creating example card
+                 try { const exampleCard = createModelingCard(example); mainContentSection.appendChild(exampleCard); console.log(`Appended card for example: ${example.title}`); } // LOG: Appended example card
+                 catch (e) { console.error(`Error creating card for example "${example.title}":`, e); mainContentSection.innerHTML += `<p style="color: red;">Fel vid skapande av kort för exempel "${example.title}".</p>`; }
             });
         }
-        // No action needed for 'overview' or if categoryNameToLoad is null and isModelingPage is false (handled by default case in switch)
 
-    } else {
-         console.error("Could not find main content section with an ID.");
-         document.body.insertAdjacentHTML('beforeend', '<p style="color: red; text-align: center; padding: 20px;">Error: Kunde inte hitta huvudsektionen för att ladda innehåll.</p>');
-    }
+    } else { console.error("Could not find main content section with selector 'main > section[id]'."); document.body.insertAdjacentHTML('beforeend', '<p style="color: red; text-align: center; padding: 20px;">Error: Kunde inte hitta huvudsektionen för att ladda innehåll.</p>'); } // LOG: Section not found
+    console.log("Content population finished."); // LOG: End
 
 }); // End DOMContentLoaded

@@ -361,34 +361,34 @@ footer {
 
 /* Styles for specific interactive examples */
 .term-card {
-    background-color: #fff;
-    border: 1px solid #eee;
+    background-color: var(--card-bg); /* Use variable */
+    border: 1px solid #eee; /* Default border */
     border-left: 5px solid var(--primary-color);
     padding: 15px;
     margin-bottom: 15px;
     border-radius: 4px;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
-    transition: transform 0.2s ease-in-out;
+    box-shadow: 2px 2px 5px var(--card-shadow); /* Use variable */
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Restore transitions */
 }
 
 .term-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 4px 4px 10px rgba(0,0,0,0.1);
+    transform: translateY(-3px); /* Restore hover effect */
+    box-shadow: 4px 4px 10px var(--card-shadow); /* Restore hover effect */
 }
 
 .term-title {
     font-weight: bold;
-    color: var(--header-bg);
+    color: var(--header-bg); /* Use variable */
     margin-bottom: 5px;
     /* cursor: pointer; Removed as it's not clickable anymore */
 }
 
 .term-definition {
-    /* display: none; /* Hidden by default, shown on click */
-    display: block; /* Show by default */
+    display: block; /* Ensure it's displayed */
     margin-top: 10px;
     padding-top: 10px;
-    border-top: 1px dashed #eee;
+    border-top: 1px dashed #eee; /* Default border */
+    color: var(--text-color); /* Ensure text color uses variable */
 }
 
 /* .term-definition.visible { */
