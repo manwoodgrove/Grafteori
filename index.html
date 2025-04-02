@@ -10,21 +10,43 @@
 </head>
 <body>
     <header>
-        <h1>Diskret Matematik: Grafer</h1>
-        <p>En interaktiv översikt över grundläggande begrepp inom grafteori.</p>
+        <div class="header-content">
+            <h1>Grundläggande Grafteori</h1>
+            <p>En interaktiv sammanfattning</p>
+        </div>
+         <!-- Nav is moved out of header -->
+         <!-- Theme toggle is moved into nav -->
     </header>
 
-    <main>
-        <section id="definitions">
-            <h2>Definitioner och Förklaringar</h2>
-            <!-- Content will be loaded/generated here -->
-        </section>
+    <div class="page-container"> <!-- Added page container -->
+        <nav>
+            <ul>
+                <li><a href="index.html" class="active">Översikt</a></li>
+                <li><a href="generella-termer.html">Generella Termer</a></li>
+                <li><a href="nods-grad.html">Nods Grad</a></li>
+                <li><a href="forflytta-graf.html">Förflyttning</a></li>
+                <li><a href="kompletta-bipartita.html">Kompletta/Bipartita</a></li>
+                <li><a href="kanttyper-variationer.html">Kanttyper/Variationer</a></li>
+                <li><a href="euler-hamilton.html">Euler & Hamilton</a></li>
+                <li><a href="permutationer-kombinationer.html">Permutationer/Kombinationer</a></li>
+                <li><a href="examples.html">Modelleringsexempel</a></li>
+            </ul>
+            <button id="theme-toggle">🌙</button> <!-- Moved theme toggle here -->
+        </nav>
 
-        <section id="modeling-examples">
-            <h2>Exempel på Modellering med Grafer</h2>
-            <!-- Content will be loaded/generated here -->
-        </section>
-    </main>
+        <main>
+            <section id="overview">
+                <h2>Välkommen!</h2>
+             <p>Denna sida ger en interaktiv översikt över grundläggande begrepp inom grafteori.</p>
+             <p>Använd navigeringsmenyn ovan för att utforska de olika sektionerna:</p>
+             <ul>
+                 <li>Definitioner av grundläggande termer.</li>
+                 <li>Förklaringar av olika grafegenskaper och operationer.</li>
+                 <li>Exempel på hur grafer kan användas för att modellera problem.</li>
+             </ul>
+            </section>
+        </main>
+    </div> <!-- Close page container -->
 
     <footer>
         <p>Skapad med hjälp av AI</p>

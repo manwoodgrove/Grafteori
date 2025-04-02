@@ -26,12 +26,26 @@ body {
     min-height: 100vh;
 }
 
+/* New container for Nav + Main */
+.page-container {
+    display: flex;
+    flex: 1; /* Allow this container to grow and push footer down */
+}
+
 header {
     background-color: var(--header-bg);
+    /* Header is no longer the main flex container for nav */
     color: var(--header-text);
     padding: 1.5rem 2rem;
     text-align: center;
     box-shadow: 0 2px 4px var(--card-shadow);
+    /* Removed flex properties that were managing nav */
+}
+
+.header-content {
+    /* This might need adjustment depending on what remains in the header */
+    flex-grow: 1;
+    text-align: center; /* Center title if nav is gone */
 }
 
 header h1 {
@@ -42,19 +56,223 @@ header h1 {
 header p {
     margin-top: 0.5rem;
     font-weight: 300;
+    font-size: 1.2em; /* Adjust size if needed */
 }
 
+/* Navigation Styling for Left Column */
+nav {
+    width: 220px; /* Width of the left navigation */
+    flex-shrink: 0; /* Prevent nav from shrinking */
+    background-color: var(--header-bg); /* Match header background */
+    padding: 2rem 1rem;
+    height: 100vh; /* Full viewport height */
+    position: sticky; /* Stick to the top */
+    top: 0;
+    overflow-y: auto; /* Allow scrolling if content overflows */
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    z-index: 10; /* Ensure nav stays above content */
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    /* display: flex; Removed for vertical layout */
+}
+
+nav li {
+    /* margin-left: 1.5rem; Removed */
+    margin-bottom: 0.8rem; /* Spacing for vertical items */
+}
+
+nav a {
+    color: var(--header-text); /* Use header text color */
+    text-decoration: none;
+    font-weight: 400;
+    /* border-bottom: 2px solid transparent; Removed */
+    padding: 8px 15px; /* Adjust padding */
+    display: block; /* Make links take full width */
+    border-radius: 4px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+nav a:hover {
+    /* border-bottom-color: var(--secondary-color); Removed */
+    background-color: rgba(255, 255, 255, 0.1);
+}
+nav a.active {
+    background-color: var(--primary-color); /* Highlight active link */
+    color: white;
+    font-weight: bold;
+}
+
+
+#theme-toggle {
+    /* Position theme toggle within the nav bar now */
+    margin-top: 2rem; /* Space above the button */
+    background: none;
+    border: 1px solid var(--header-text);
+    color: var(--header-text);
+    font-size: 1.5rem; /* Make icon larger */
+    cursor: pointer;
+    border-radius: 50%; /* Make it round */
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* margin-left: 1rem; Removed */
+    transition: background-color 0.3s ease, color 0.3s ease;
+    display: block; /* Make it block level */
+    margin-left: auto; /* Center horizontally */
+    margin-right: auto;
+}
+
+#theme-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Dark Mode Styles */
+body.dark-mode {
+    --primary-color: #5dade2; /* Lighter Blue */
+    --secondary-color: #58d68d; /* Lighter Green */
+    --background-color: #2c3e50; /* Dark Blue/Grey */
+    --text-color: #ecf0f1; /* Light Grey */
+    --header-bg: #1a2531; /* Even Darker Blue/Grey */
+    --header-text: #fdfefe; /* Almost White */
+    --footer-bg: #212f3d; /* Darker Footer */
+    --footer-text: #a6acaf; /* Lighter Grey */
+    --card-bg: #34495e; /* Medium Dark Blue/Grey */
+    --card-shadow: rgba(0, 0, 0, 0.3);
+    --interactive-highlight: #f39c12; /* Orange */
+}
+
+body.dark-mode header {
+    background-color: var(--header-bg);
+    color: var(--header-text);
+}
+
+body.dark-mode footer {
+    background-color: var(--footer-bg);
+    color: var(--footer-text);
+}
+
+body.dark-mode section {
+    background-color: var(--card-bg);
+    box-shadow: 0 4px 8px var(--card-shadow);
+}
+
+body.dark-mode h2 {
+    color: var(--primary-color);
+    border-bottom-color: var(--secondary-color);
+}
+
+body.dark-mode h3 {
+    color: var(--header-text); /* Use header text color for contrast */
+}
+
+body.dark-mode code,
+body.dark-mode strong {
+    color: var(--secondary-color);
+}
+
+body.dark-mode em {
+    color: var(--primary-color);
+}
+
+body.dark-mode .interactive-term:hover {
+    background-color: #415b76; /* Darker highlight */
+}
+
+body.dark-mode .definition-popup {
+    background-color: var(--header-bg);
+    color: var(--header-text);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+}
+
+body.dark-mode .graph-visualization {
+    border-color: #566573; /* Darker border */
+    background-color: #2c3e50; /* Match background */
+    color: #bdc3c7; /* Lighter placeholder text */
+}
+
+body.dark-mode .term-card {
+    background-color: var(--card-bg);
+    border-color: #4a637a;
+    border-left-color: var(--primary-color);
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.15);
+}
+
+body.dark-mode .term-card:hover {
+    box-shadow: 4px 4px 10px rgba(0,0,0,0.25);
+}
+
+body.dark-mode .term-title {
+    color: var(--header-text);
+}
+
+body.dark-mode .term-definition {
+    border-top-color: #4a637a;
+}
+
+body.dark-mode nav {
+    background-color: var(--header-bg); /* Already dark */
+    box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+}
+
+
+body.dark-mode nav a {
+    color: var(--header-text);
+}
+
+body.dark-mode nav a:hover {
+     background-color: rgba(255, 255, 255, 0.15);
+}
+
+body.dark-mode nav a.active {
+    background-color: var(--primary-color);
+    color: var(--header-text);
+}
+
+
+body.dark-mode #theme-toggle {
+    border-color: var(--header-text);
+    color: var(--header-text);
+}
+
+body.dark-mode #theme-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Adjust Vis Network colors for dark mode */
+body.dark-mode .vis-network {
+    background: var(--card-bg); /* Match card background */
+}
+
+body.dark-mode .vis-network .vis-button {
+    background-color: var(--header-bg);
+    color: var(--header-text);
+    border: 1px solid var(--text-color);
+}
+body.dark-mode .vis-network .vis-button:hover {
+    box-shadow: 0 0 5px var(--primary-color);
+}
+
+
 main {
-    flex: 1; /* Allows main to grow and push footer down */
+    flex: 1; /* Allows main to grow */
     padding: 2rem;
-    max-width: 1000px;
-    margin: 2rem auto; /* Center the main content */
-    width: 90%;
+    /* max-width: 1000px; Removed, let it fill space */
+    /* margin: 2rem auto; Removed, no longer centered */
+    /* width: 90%; Removed */
+    overflow-y: auto; /* Allow main content to scroll independently if needed */
 }
 
 section {
+    max-width: 1000px; /* Apply max-width to sections within main */
+    margin: 0 auto 2rem auto; /* Center sections horizontally */
     background-color: var(--card-bg);
-    margin-bottom: 2rem;
+    /* margin-bottom: 2rem; Already set by margin shorthand */
     padding: 1.5rem 2rem;
     border-radius: 8px;
     box-shadow: 0 4px 8px var(--card-shadow);
@@ -97,7 +315,7 @@ footer {
     color: var(--footer-text);
     text-align: center;
     padding: 1rem;
-    margin-top: auto; /* Pushes footer to the bottom */
+    /* margin-top: auto; Removed, as .page-container handles pushing footer */
     font-size: 0.9em;
 }
 
@@ -137,6 +355,8 @@ footer {
     justify-content: center;
     color: #999;
     font-style: italic;
+    position: relative; /* Needed for absolute positioning inside if required */
+    overflow: hidden; /* Prevent content spillover */
 }
 
 /* Styles for specific interactive examples */
@@ -160,16 +380,275 @@ footer {
     font-weight: bold;
     color: var(--header-bg);
     margin-bottom: 5px;
-    cursor: pointer; /* Indicate it's clickable */
+    /* cursor: pointer; Removed as it's not clickable anymore */
 }
 
 .term-definition {
-    display: none; /* Hidden by default, shown on click */
+    /* display: none; /* Hidden by default, shown on click */ */
+    display: block; /* Show by default */
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px dashed #eee;
 }
 
-.term-definition.visible {
-    display: block;
+/* .term-definition.visible { */
+/*    display: block; */
+/* } */
+
+/* Styles for text-based examples like Permutation/Combination */
+.text-example-container {
+    border: none; /* Remove graph border */
+    background-color: transparent; /* Remove graph background */
+    min-height: auto; /* Allow content to define height */
+    text-align: left;
+    padding: 10px;
+    color: var(--text-color); /* Ensure text color matches theme */
+    font-style: normal; /* Override italic from graph-visualization */
+    display: block; /* Ensure it takes block layout */
+    align-items: initial; /* Reset flex alignment */
+    justify-content: initial; /* Reset flex alignment */
+}
+
+.calc-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.calc-container label {
+    margin-right: 5px;
+}
+
+.calc-container input[type="number"] {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 60px; /* Adjust width as needed */
+    color: var(--text-color); /* Theme support */
+    background-color: var(--background-color); /* Theme support */
+}
+
+.calc-container button {
+    padding: 8px 12px;
+    background-color: var(--primary-color);
+    color: var(--header-text);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.calc-container button:hover {
+    background-color: #2980b9; /* Darker blue on hover */
+}
+
+body.dark-mode .calc-container button:hover {
+     background-color: #7bc0e8; /* Lighter blue on hover */
+}
+
+
+.calc-output {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    background-color: var(--background-color); /* Match theme background */
+    width: 100%; /* Take full width */
+    min-height: 40px; /* Ensure space for output */
+    box-sizing: border-box; /* Include padding and border in width */
+}
+
+.calc-output ul {
+    margin-top: 5px;
+    margin-bottom: 0;
+    padding-left: 25px; /* Indent list */
+}
+
+/* Dark mode adjustments for calculator */
+body.dark-mode .text-example-container {
+    color: var(--text-color);
+}
+body.dark-mode .calc-container input[type="number"] {
+    background-color: var(--card-bg); /* Match card background */
+    color: var(--text-color);
+    border-color: #566573;
+}
+body.dark-mode .calc-output {
+    background-color: var(--card-bg);
+    border-color: var(--primary-color);
+}
+
+/* ===================================== */
+/* Permutation/Combination Visualizer    */
+/* ===================================== */
+
+.perm-comb-container {
+    border: 1px solid var(--primary-color); /* Keep a subtle border */
+    border-radius: 8px;
+    padding: 20px;
+    background: linear-gradient(135deg, var(--background-color) 0%, var(--card-bg) 100%); /* Subtle gradient */
+    margin-top: 1rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    color: var(--text-color);
+    font-style: normal; /* Override any inherited italic */
+    min-height: auto; /* Override graph-visualization min-height */
+}
+body.dark-mode .perm-comb-container {
+     background: linear-gradient(135deg, var(--background-color) 0%, var(--card-bg) 100%);
+     border-color: var(--primary-color);
+     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+
+.pc-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px; /* Increased gap */
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--primary-color);
+}
+
+.pc-controls label {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.pc-controls input[type="text"],
+.pc-controls input[type="number"] {
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+    color: var(--text-color);
+    background-color: var(--background-color);
+}
+.pc-controls input[type="text"] {
+    flex-grow: 1; /* Allow text input to take more space */
+    min-width: 150px;
+}
+.pc-controls input[type="number"] {
+    width: 70px;
+}
+
+.pc-controls button {
+    padding: 10px 15px;
+    background-color: var(--secondary-color); /* Use secondary color */
+    color: white; /* White text for contrast */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+}
+
+.pc-controls button:hover {
+    background-color: #27ae60; /* Darker green */
+    transform: translateY(-1px);
+}
+.pc-controls button:active {
+    transform: translateY(0px);
+}
+
+body.dark-mode .pc-controls input[type="text"],
+body.dark-mode .pc-controls input[type="number"] {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border-color: #566573;
+}
+body.dark-mode .pc-controls button {
+    background-color: var(--secondary-color);
+    color: var(--header-bg); /* Dark text on light green */
+}
+body.dark-mode .pc-controls button:hover {
+    background-color: #82e0aa; /* Lighter green */
+}
+
+.pc-explanation {
+    margin-bottom: 15px;
+    font-size: 0.95em;
+    background-color: rgba(0,0,0,0.02); /* Very subtle background */
+    padding: 10px;
+    border-radius: 4px;
+}
+body.dark-mode .pc-explanation {
+    background-color: rgba(255,255,255,0.05);
+}
+
+.pc-output {
+    margin-bottom: 20px;
+    padding: 10px;
+    border-left: 3px solid var(--primary-color);
+    background-color: var(--background-color);
+    font-weight: 500;
+}
+body.dark-mode .pc-output {
+     background-color: var(--card-bg);
+     border-left-color: var(--primary-color);
+}
+
+.pc-visualizer {
+    margin-top: 15px;
+    padding: 15px;
+    background-color: rgba(0,0,0,0.03);
+    border-radius: 4px;
+    min-height: 100px;
+}
+body.dark-mode .pc-visualizer {
+    background-color: rgba(0,0,0,0.1);
+}
+
+.pc-visualizer h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--secondary-color);
+    padding-bottom: 5px;
+}
+
+.pc-results-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.perm-item, .comb-group {
+    padding: 8px 12px;
+    border-radius: 20px; /* Pill shape */
+    background-color: var(--primary-color);
+    color: white;
+    font-family: monospace;
+    font-size: 1.1em;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+}
+.perm-item:hover, .comb-group:hover {
+    transform: scale(1.05);
+}
+
+.perm-item span {
+    display: inline-block;
+    margin: 0 2px;
+    padding: 2px 4px;
+    background-color: rgba(255,255,255,0.2);
+    border-radius: 3px;
+}
+
+.comb-group {
+     background-color: var(--secondary-color);
+}
+
+body.dark-mode .perm-item {
+    background-color: var(--primary-color);
+    color: var(--header-bg);
+}
+body.dark-mode .perm-item span {
+     background-color: rgba(0,0,0,0.2);
+}
+body.dark-mode .comb-group {
+     background-color: var(--secondary-color);
+     color: var(--header-bg);
 }
