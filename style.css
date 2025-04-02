@@ -1,0 +1,175 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+:root {
+    --primary-color: #3498db; /* Blue */
+    --secondary-color: #2ecc71; /* Green */
+    --background-color: #f4f7f6;
+    --text-color: #333;
+    --header-bg: #2c3e50; /* Dark Blue/Grey */
+    --header-text: #ecf0f1; /* Light Grey */
+    --footer-bg: #34495e; /* Slightly Lighter Dark Blue/Grey */
+    --footer-text: #bdc3c7; /* Medium Grey */
+    --card-bg: #ffffff;
+    --card-shadow: rgba(0, 0, 0, 0.1);
+    --interactive-highlight: #f1c40f; /* Yellow */
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    line-height: 1.6;
+    color: var(--text-color);
+    background-color: var(--background-color);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+header {
+    background-color: var(--header-bg);
+    color: var(--header-text);
+    padding: 1.5rem 2rem;
+    text-align: center;
+    box-shadow: 0 2px 4px var(--card-shadow);
+}
+
+header h1 {
+    margin: 0;
+    font-weight: 700;
+}
+
+header p {
+    margin-top: 0.5rem;
+    font-weight: 300;
+}
+
+main {
+    flex: 1; /* Allows main to grow and push footer down */
+    padding: 2rem;
+    max-width: 1000px;
+    margin: 2rem auto; /* Center the main content */
+    width: 90%;
+}
+
+section {
+    background-color: var(--card-bg);
+    margin-bottom: 2rem;
+    padding: 1.5rem 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px var(--card-shadow);
+}
+
+h2 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--secondary-color);
+    padding-bottom: 0.5rem;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+h3 {
+    color: var(--header-bg);
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+}
+
+ul {
+    padding-left: 20px;
+}
+
+li {
+    margin-bottom: 0.5rem;
+}
+
+code, strong {
+    color: var(--secondary-color);
+    font-weight: bold;
+}
+
+em {
+    font-style: italic;
+    color: var(--primary-color);
+}
+
+footer {
+    background-color: var(--footer-bg);
+    color: var(--footer-text);
+    text-align: center;
+    padding: 1rem;
+    margin-top: auto; /* Pushes footer to the bottom */
+    font-size: 0.9em;
+}
+
+/* Placeholder for interactive elements */
+.interactive-term {
+    cursor: pointer;
+    border-bottom: 1px dashed var(--primary-color);
+    transition: background-color 0.3s ease;
+}
+
+.interactive-term:hover {
+    background-color: #eaf5ff; /* Light blue highlight on hover */
+}
+
+.definition-popup {
+    /* Styles for popups/tooltips will go here */
+    display: none; /* Hidden by default */
+    position: absolute;
+    background-color: var(--header-bg);
+    color: var(--header-text);
+    padding: 10px 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 10;
+    font-size: 0.9em;
+    max-width: 300px;
+}
+
+/* Basic graph visualization placeholder */
+.graph-visualization {
+    border: 1px solid #ccc;
+    min-height: 200px;
+    margin-top: 1rem;
+    background-color: #f9f9f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-style: italic;
+}
+
+/* Styles for specific interactive examples */
+.term-card {
+    background-color: #fff;
+    border: 1px solid #eee;
+    border-left: 5px solid var(--primary-color);
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+    transition: transform 0.2s ease-in-out;
+}
+
+.term-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 4px 4px 10px rgba(0,0,0,0.1);
+}
+
+.term-title {
+    font-weight: bold;
+    color: var(--header-bg);
+    margin-bottom: 5px;
+    cursor: pointer; /* Indicate it's clickable */
+}
+
+.term-definition {
+    display: none; /* Hidden by default, shown on click */
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #eee;
+}
+
+.term-definition.visible {
+    display: block;
+}
