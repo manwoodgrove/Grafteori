@@ -384,7 +384,7 @@ footer {
 }
 
 .term-definition {
-    /* display: none; /* Hidden by default, shown on click */ */
+    /* display: none; /* Hidden by default, shown on click */
     display: block; /* Show by default */
     margin-top: 10px;
     padding-top: 10px;
